@@ -328,6 +328,27 @@
     // Download as Word Document (.docx) using docx library
     downloadDocx.addEventListener('click', () => {
         const text = textOutput.value;
+	const lines = text.split('\n');
+	// Map lines into docx Paragraphs
+	const paragraphs = lines.map(line => new docx.Paragraph({
+	children: [new docx.TextRun(line)]
+	}));
 
+	const doc = new docx.Document({
+	sections: [{
+	properties: {},
+	children: paragraphs,
+	}],
+	});
 
+	docx.Packer.toBlob(doc).then(blob => {
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = 'transcription.docx';
+	a.click();
+	URL.revokeObjectURL(url);
+	});
+
+	});
 
