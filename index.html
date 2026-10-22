@@ -73,6 +73,7 @@
             margin: 0;
             font-size: 1.1rem;
             color: var(--text-main);
+            pointer-events: none;
         }
 
         .dropzone span {
@@ -80,6 +81,7 @@
             margin-top: 0.5rem;
             font-size: 0.875rem;
             color: var(--text-muted);
+            pointer-events: none;
         }
 
         #fileInput {
@@ -237,30 +239,37 @@
     const downloadTxt = document.getElementById('downloadTxt');
     const downloadDocx = document.getElementById('downloadDocx');
 
-    // Trigger file input click on dropzone click
-    dropzone.addEventListener('click', () => fileInput.click());
+    // Trigger file selection pop-up correctly
+    dropzone.addEventListener('click', (e) => {
+        fileInput.click();
+    });
 
     // Drag & Drop behaviors
     dropzone.addEventListener('dragover', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         dropzone.classList.add('dragover');
     });
 
-    dropzone.addEventListener('dragleave', () => {
+    dropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         dropzone.classList.remove('dragover');
     });
 
     dropzone.addEventListener('drop', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         dropzone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) {
-            handleFile(e.dataTransfer.files[0]);
+        
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]); // Fixed: target the individual file item
         }
     });
 
     fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            handleFile(e.target.files[0]);
+        if (e.target.files && e.target.files.length > 0) {
+            handleFile(e.target.files[0]); // Fixed: target the individual file item
         }
     });
 
@@ -284,26 +293,20 @@
         progressBar.style.display = 'block';
         outputContainer.style.display = 'none';
         statusText.innerText = 'Initializing optical engine...';
-        progressFill.style.width = '0%';
+        progressFill.style.width = '100%'; // Decorative initial pulse
 
         try {
+            // Initialize worker
             const worker = await Tesseract.createWorker('eng');
-            
-            // Track processing progress
-            // Note: Tesseract.js progress handler structure
-            await worker.setParameters({
-                tessedit_char_whitelist: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,-?!@()\'":; \n',
-            });
 
             statusText.innerText = 'Analyzing handwriting structures...';
-            progressFill.style.width = '40%';
-
+            
+            // Run the OCR engine
             const { data: { text } } = await worker.recognize(file);
             
-            progressFill.style.width = '100%';
             statusText.innerText = 'Transcription complete!';
             
-            textOutput.value = text.trim() || "No clear text could be detected. Try a higher contrast or cleaner image.";
+            textOutput.value = text.trim() || "No text could be extracted. Please make sure the handwriting is legible and well-lit.";
             outputContainer.style.display = 'block';
             
             await worker.terminate();
@@ -325,30 +328,30 @@
         URL.revokeObjectURL(url);
     });
 
-    // Download as Word Document (.docx) using docx library
+
+    // Download as Word Document (.docx)
     downloadDocx.addEventListener('click', () => {
-        const text = textOutput.value;
-	const lines = text.split('\n');
-	// Map lines into docx Paragraphs
-	const paragraphs = lines.map(line => new docx.Paragraph({
-	children: [new docx.TextRun(line)]
-	}));
+const text = textOutput.value;
+const lines = text.split('\n');
+const paragraphs = lines.map(line => new docx.Paragraph({
+children: [new docx.TextRun(line)]
+}));
 
-	const doc = new docx.Document({
-	sections: [{
-	properties: {},
-	children: paragraphs,
-	}],
-	});
+const doc = new docx.Document({
+sections: [{
+properties: {},
+children: paragraphs,
+}],
+});
 
-	docx.Packer.toBlob(doc).then(blob => {
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = 'transcription.docx';
-	a.click();
-	URL.revokeObjectURL(url);
-	});
+docx.Packer.toBlob(doc).then(blob => {
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'transcription.docx';
+a.click();
+URL.revokeObjectURL(url);
+});
 
-	});
+});
 
