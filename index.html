@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwriting to Text Converter</title>
+    <script src="https://jsdelivr.net"></script>
+    <script src="https://cloudflare.com"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            background: linear-gradient(to right, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .dropzone {
+            border: 2px dashed #475569;
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(30, 41, 59, 0.5);
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .dropzone p {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        .dropzone span {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-container {
+            display: none;
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        #imagePreview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+        }
+
+        .progress-bar {
+            display: none;
+            width: 100%;
+            background-color: #334155;
+            border-radius: 9999px;
+            margin-top: 1.5rem;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 8px;
+            width: 0%;
+            background-color: var(--accent);
+            transition: width 0.1s linear;
+        }
+
+        #statusText {
+            text-align: center;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .output-container {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: var(--text-main);
+            padding: 1rem;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        button {
+            flex: 1;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button.secondary {
+            background-color: #334155;
+        }
+
+        button.secondary:hover {
+            background-color: #475569;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Scribe</h1>
+    <p class="subtitle">Convert your handwritten pages into clean, editable documents instantly.</p>
+
+    <div class="dropzone" id="dropzone">
+        <p>Drop your page here or <strong>browse files</strong></p>
+        <span>Supports PNG, JPG, JPEG</span>
+        <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div class="preview-container" id="previewContainer">
+        <img id="imagePreview" alt="Uploaded page preview">
+    </div>
+
+    <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div id="statusText"></div>
+
+    <div class="output-container" id="outputContainer">
+        <label for="textOutput">Extracted Transcription</label>
+        <textarea id="textOutput" placeholder="Your text will appear here..."></textarea>
+        
+        <div class="actions">
+            <button id="downloadTxt" class="secondary">Download .TXT</button>
+            <button id="downloadDocx">Download .DOCX</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const statusText = document.getElementById('statusText');
+    const outputContainer = document.getElementById('outputContainer');
+    const textOutput = document.getElementById('textOutput');
+    const downloadTxt = document.getElementById('downloadTxt');
+    const downloadDocx = document.getElementById('downloadDocx');
+
+    // Trigger file input click on dropzone click
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    // Drag & Drop behaviors
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    function handleFile(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('Please upload an image file.');
+            return;
+        }
+
+        // Show Image Preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            previewContainer.style.display = 'block';
+            processImage(file);
+        }
+        reader.readAsDataURL(file);
+    }
+
+    async function processImage(file) {
+        progressBar.style.display = 'block';
+        outputContainer.style.display = 'none';
+        statusText.innerText = 'Initializing optical engine...';
+        progressFill.style.width = '0%';
+
+        try {
+            const worker = await Tesseract.createWorker('eng');
+            
+            // Track processing progress
+            // Note: Tesseract.js progress handler structure
+            await worker.setParameters({
+                tessedit_char_whitelist: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,-?!@()\'":; \n',
+            });
+
+            statusText.innerText = 'Analyzing handwriting structures...';
+            progressFill.style.width = '40%';
+
+            const { data: { text } } = await worker.recognize(file);
+            
+            progressFill.style.width = '100%';
+            statusText.innerText = 'Transcription complete!';
+            
+            textOutput.value = text.trim() || "No clear text could be detected. Try a higher contrast or cleaner image.";
+            outputContainer.style.display = 'block';
+            
+            await worker.terminate();
+        } catch (error) {
+            console.error(error);
+            statusText.innerText = 'An error occurred during transcription.';
+        }
+    }
+
+    // Download as Plain Text (.txt)
+    downloadTxt.addEventListener('click', () => {
+        const text = textOutput.value;
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'transcription.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // Download as Word Document (.docx) using docx library
+    downloadDocx.addEventListener('click', () => {
+        const text = textOutput.value;
+
+
+
